@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-worker
+  labels:
+    app: superset-worker
+    chart: superset-0.6.3
+    release: superset
+    heritage: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-worker
+      release: superset
+  template:
+    metadata:
+      annotations:
+        checksum/superset_config.py: 7f9152c009bca2f4fe38c0bb34c632a37c400680c5dacb424aef02e68d172946
+        checksum/connections: a91716d6d1088e870fbe02159dc0b066dd011885aa08a22fbe60ea1cd4720f82
+        checksum/extraConfigs: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/extraSecrets: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/extraSecretEnv: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/configOverrides: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        checksum/configOverridesFiles: 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        
+      labels:
+        app: superset-worker
+        release: superset
+    spec:
+      securityContext:
+        runAsUser: 0
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - until nc -zv $DB_HOST $DB_PORT -w1; do echo 'waiting for db'; sleep 1; done
+        envFrom:
+        - secretRef:
+            name: 'superset-env'
+        image: 'busybox:latest'
+        imagePullPolicy: 'IfNotPresent'
+        name: wait-for-postgres
+      containers:
+        - name: superset
+          image: "apache/superset:latest"
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c",". /app/pythonpath/superset_bootstrap.sh; celery --app=superset.tasks.celery_app:app worker"]
+          env:
+            - name: "SUPERSET_PORT"
+              value: "8088"
+          envFrom:
+            - secretRef:
+                name: "superset-env"
+          volumeMounts:
+            - name: superset-config
+              mountPath: "/app/pythonpath"
+              readOnly: true
+          resources:
+            {}
+      volumes:
+        - name: superset-config
+          secret:
+            secretName: superset-config

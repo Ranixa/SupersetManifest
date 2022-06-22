@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset
+  labels:
+    app: superset
+    chart: superset-0.6.3
+    release: superset
+    heritage: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8088
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: superset
+    release: superset
