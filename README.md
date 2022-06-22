@@ -1,2 +1,3 @@
 # Supersetmanifest
-# SupersetManifest
+# Just a bunch of superset garble. Thanks, Rach.
+
